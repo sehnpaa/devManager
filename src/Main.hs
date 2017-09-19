@@ -26,11 +26,6 @@ import           Network (authHeaders, destroyDropletRequest, snapshotsRequest, 
 import           Token (getToken, tokenSanityCheck)
 import           Types (DropletId (DropletId), SnapshotId (SnapshotId), Token, getSecret, unDropletId, unSnapshotId)
 
-endEarly :: String -> IO ()
-endEarly err = do
-  putStrLn $ "Error: " ++ err
-  exitWith (ExitFailure 1)
-
 decodeBody :: Response L8.ByteString -> Either String Value
 decodeBody = eitherDecode' . responseBody
 
