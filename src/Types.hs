@@ -26,8 +26,14 @@ instance Show Error where
 
 newtype SnapshotId = SnapshotId
   { unSnapshotId :: Scientific
-  } deriving (Show)
+  }
+
+instance Show SnapshotId where
+  show = show . coefficient . unSnapshotId
 
 newtype DropletId = DropletId
   { unDropletId :: Scientific
-  } deriving (Show)
+  }
+
+instance Show DropletId where
+  show = show . coefficient . unDropletId
