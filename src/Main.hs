@@ -6,7 +6,7 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Either (EitherT(EitherT), runEitherT)
 import Data.Aeson
-       (Value(Number), (.=), eitherDecode', encode, object)
+       (Value(Number, String), (.=), eitherDecode', encode, object)
 import Data.Aeson.Lens (AsValue, _Number, _String, key, nth)
 import qualified Data.ByteString.Char8 as S8
 import Data.ByteString.Lazy.Char8 as L8 (ByteString)
@@ -64,8 +64,8 @@ parseText text =
   where
     err = Left $ T.concat ["Could not cast Text '", text, "' to Scientific"]
 
-parseSnapshotId :: Response ByteString -> Either Error Text
-parseSnapshotId = maybeToEither ParseSnapshotId . getSnapshotId . responseBody
+parseSnapshotId :: Response ByteString -> Either Error SnapshotId
+parseSnapshotId = fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody
 
 parseDropletId :: Response ByteString -> Either Error DropletId
 parseDropletId =
@@ -75,7 +75,7 @@ requestObject :: SnapshotId -> Value
 requestObject id =
   object
     [ ("name" :: Text) .= ("haskellbox" :: Value)
-    , ("image" :: Text) .= (Number $ unSnapshotId id :: Value)
+    , ("image" :: Text) .= (String $ unSnapshotId id :: Value)
     , ("region" :: Text) .= ("ams3" :: Value)
     , ("size" :: Text) .= ("c-2" :: Value)
     ]
@@ -88,14 +88,14 @@ startSnapshotIO :: Token -> SnapshotId -> IO (Either Error DropletId)
 startSnapshotIO token id = do
   manager <- newManager tlsManagerSettings
   response <- httpLbs (snapshotRequest token id) manager
-  return . fmap DropletId . maybeToEither ParseDropletId $ getDropletId $
-    responseBody response
+  return . parseDropletId $ response
 
 getSnapshotIO :: Token -> IO (Either Error SnapshotId)
 getSnapshotIO token = do
   manager <- newManager tlsManagerSettings
   response <- httpLbs (snapshotsRequest token) manager
-  return $ fmap SnapshotId (parseSnapshotId response >>= parseText)
+  -- return $ fmap SnapshotId (parseSnapshotId response >>= parseText)
+  return . parseSnapshotId $ response
 
 destroyDropletIO :: Token -> DropletId -> IO (Either Error DropletId)
 destroyDropletIO token id = do

@@ -25,11 +25,11 @@ instance Show Error where
   show (DropletIdNotFound n) = "Response status code: " ++ show n
 
 newtype SnapshotId = SnapshotId
-  { unSnapshotId :: Scientific
+  { unSnapshotId :: Text
   }
 
 instance Show SnapshotId where
-  show = show . coefficient . unSnapshotId
+  show = Data.Text.unpack . unSnapshotId
 
 newtype DropletId = DropletId
   { unDropletId :: Scientific
