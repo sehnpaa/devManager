@@ -15,6 +15,6 @@ instance Show Error where
   show ParseDropletId = "Could not parse droplet id."
   show (DropletIdNotFound n) = "Response status code: " ++ show n
 
-newtype SnapshotId = SnapshotId { unSnapshotId :: Scientific }
-newtype DropletId = DropletId { unDropletId :: Scientific }
+newtype SnapshotId = SnapshotId { unSnapshotId :: Scientific } deriving Show
+newtype DropletId = DropletId { unDropletId :: Scientific } deriving Show
 

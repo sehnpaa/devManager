@@ -18,6 +18,7 @@ import           Network.HTTP.Conduit (defaultRequest, host, method, path, reque
 import           Network.HTTP.Types.Header (Header, hAuthorization, hContentType)
 import           Network.HTTP.Types.Status (statusCode)
 import           Prelude hiding (id)
+import           System.Console.Haskeline
 import           System.Environment (getArgs)
 import           System.Exit (ExitCode (ExitFailure), exitWith)
 import           Text.Read (reads)
@@ -112,10 +113,60 @@ destroyDroplet id = do
 wait :: DropletId -> EitherT Error IO DropletId
 wait id = liftIO (threadDelay (200*1000*1000)) >> return id
 
+data Command = CreateCommand | RemoveCommand | QuitCommand | UnknownCommand
+
+parseInput :: String -> Command
+parseInput "create" = CreateCommand
+parseInput "remove" = RemoveCommand
+parseInput "quit" = QuitCommand
+parseInput _ = UnknownCommand
+
+data Env = Env (Maybe DropletId) (Maybe SnapshotId) deriving Show
+
+emptyEnv = Env Nothing Nothing
+
+updateEnvDropletId (Env _ a) newId = Env (Just newId) a
+
+clearEnvDropletId (Env _ a) = Env Nothing a
+
+updateEnvSnapshotIdId (Env a _) newId = Env a (Just newId)
+
 main :: IO ()
-main = do
-  dropletId <- runEitherT (startDropletFromSnapshot >>= wait >>= destroyDroplet)
-  case dropletId of
-    (Right id) -> putStrLn . (++) "Success: ". show . coefficient . unDropletId $ id
-    (Left err) -> putStrLn . (++) "Error: " $ show err
-  return ()
+main = runInputT defaultSettings $ loop emptyEnv
+ where
+   loop :: Env -> InputT IO ()
+   loop env@(Env mayDropletId maySnapshotId) = do
+     outputStrLn "--------------"
+     outputStrLn $ "Env: " ++ show env
+     outputStrLn "--------------"
+     minput <- getInputLine "devManager> "
+     case minput of
+       Nothing -> outputStrLn "No input"
+       Just n -> case parseInput n of
+                   CreateCommand -> do
+                     outputStrLn "Creating a new droplet..."
+                     dropletId <- liftIO . runEitherT $ startDropletFromSnapshot
+                     case dropletId of
+                       (Right id) -> do
+                         outputStrLn . (++) "Success: ". show . coefficient . unDropletId $ id
+                         loop $ updateEnvDropletId env id
+
+                       (Left err) -> do
+                         outputStrLn . (++) "Error: " $ show err
+                         loop env
+                   RemoveCommand -> do
+                     outputStrLn "Removing droplet..."
+                     case mayDropletId of
+                       Nothing -> outputStrLn "No droplet id in env" >> loop env
+                       (Just id) -> do
+                         dropletId <- liftIO . runEitherT $ destroyDroplet id
+                         outputStrLn $ "Removed droplet with id " ++ show dropletId
+                         loop $ clearEnvDropletId env
+                     return ()
+
+                   QuitCommand -> do
+                     outputStrLn "Quitting..."
+                     return ()
+                   _ -> do
+                     outputStrLn "Unrecognized command."
+                     loop env
