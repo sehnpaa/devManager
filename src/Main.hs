@@ -2,30 +2,40 @@
 
 module Main where
 
-import           Control.Concurrent (threadDelay)
-import           Control.Monad.IO.Class (liftIO)
-import           Control.Monad.Trans.Either (EitherT (EitherT), runEitherT)
-import           Data.Aeson ((.=), Value (Number), eitherDecode', encode, object)
-import           Data.Aeson.Lens (AsValue, key, nth, _Number, _String)
+import Control.Concurrent (threadDelay)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Either (EitherT(EitherT), runEitherT)
+import Data.Aeson
+       (Value(Number), (.=), eitherDecode', encode, object)
+import Data.Aeson.Lens (AsValue, _Number, _String, key, nth)
 import qualified Data.ByteString.Char8 as S8
-import           Data.ByteString.Lazy.Char8 as L8 (ByteString)
-import           Data.Scientific (Scientific, coefficient, scientific)
-import           Data.Text as T (Text, concat, pack, unpack)
-import           Lens.Micro ((^?))
-import           Network.HTTP.Client (httpLbs, newManager, responseBody, responseStatus, Response, Request, RequestBody (RequestBodyLBS))
-import           Network.HTTP.Client.TLS (tlsManagerSettings)
-import           Network.HTTP.Conduit (defaultRequest, host, method, path, requestBody, requestHeaders, secure)
-import           Network.HTTP.Types.Header (Header, hAuthorization, hContentType)
-import           Network.HTTP.Types.Status (statusCode)
-import           Prelude hiding (id)
-import           System.Console.Haskeline
-import           System.Environment (getArgs)
-import           System.Exit (ExitCode (ExitFailure), exitWith)
-import           Text.Read (reads)
+import Data.ByteString.Lazy.Char8 as L8 (ByteString)
+import Data.Scientific (Scientific, coefficient, scientific)
+import Data.Text as T (Text, concat, pack, unpack)
+import Lens.Micro ((^?))
+import Network.HTTP.Client
+       (Request, RequestBody(RequestBodyLBS), Response, httpLbs,
+        newManager, responseBody, responseStatus)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Network.HTTP.Conduit
+       (defaultRequest, host, method, path, requestBody, requestHeaders,
+        secure)
+import Network.HTTP.Types.Header
+       (Header, hAuthorization, hContentType)
+import Network.HTTP.Types.Status (statusCode)
+import Prelude hiding (id)
+import System.Console.Haskeline
+import System.Environment (getArgs)
+import System.Exit (ExitCode(ExitFailure), exitWith)
+import Text.Read (reads)
 
-import           Network (authHeaders, destroyDropletRequest, snapshotsRequest, startDropletRequest)
-import           Token (getToken, tokenSanityCheck)
-import           Types (DropletId (DropletId), Error (..), SnapshotId (SnapshotId), Token, getSecret, unDropletId, unSnapshotId)
+import Network
+       (authHeaders, destroyDropletRequest, snapshotsRequest,
+        startDropletRequest)
+import Token (getToken, tokenSanityCheck)
+import Types
+       (DropletId(DropletId), Error(..), SnapshotId(SnapshotId), Token,
+        getSecret, unDropletId, unSnapshotId)
 
 mapError :: (a -> c) -> Either a b -> Either c b
 mapError f (Left x) = Left $ f x
@@ -47,11 +57,12 @@ maybeToEither :: e -> Maybe a -> Either e a
 maybeToEither e = maybe (Left e) Right
 
 parseText :: Text -> Either Error Scientific
-parseText text = case (reads . T.unpack $ text :: [(Integer, String)]) of
-                  [(x, [])] -> Right (scientific x 0)
-                  _ -> mapError ParseResponse err
-                  where
-                    err = Left $ T.concat ["Could not cast Text '", text, "' to Scientific"]
+parseText text =
+  case (reads . T.unpack $ text :: [(Integer, String)]) of
+    [(x, [])] -> Right (scientific x 0)
+    _ -> mapError ParseResponse err
+  where
+    err = Left $ T.concat ["Could not cast Text '", text, "' to Scientific"]
 
 parseSnapshotId :: Response ByteString -> Either Error Text
 parseSnapshotId = maybeToEither ParseSnapshotId . getSnapshotId . responseBody
@@ -61,14 +72,17 @@ parseDropletId =
   fmap DropletId . maybeToEither ParseDropletId . getDropletId . responseBody
 
 requestObject :: SnapshotId -> Value
-requestObject id = object
-  [ ("name" :: Text) .= ("haskellbox" :: Value)
-  , ("image" :: Text).= (Number $ unSnapshotId id :: Value)
-  , ("region" :: Text).= ("ams3" :: Value)
-  , ("size" :: Text).= ("c-2" :: Value) ]
+requestObject id =
+  object
+    [ ("name" :: Text) .= ("haskellbox" :: Value)
+    , ("image" :: Text) .= (Number $ unSnapshotId id :: Value)
+    , ("region" :: Text) .= ("ams3" :: Value)
+    , ("size" :: Text) .= ("c-2" :: Value)
+    ]
 
 snapshotRequest :: Token -> SnapshotId -> Request
-snapshotRequest token = startDropletRequest token . RequestBodyLBS . encode . requestObject
+snapshotRequest token =
+  startDropletRequest token . RequestBodyLBS . encode . requestObject
 
 startSnapshotIO :: Token -> SnapshotId -> IO (Either Error DropletId)
 startSnapshotIO token id = do
@@ -111,9 +125,13 @@ destroyDroplet id = do
   EitherT $ destroyDropletIO token id
 
 wait :: DropletId -> EitherT Error IO DropletId
-wait id = liftIO (threadDelay (200*1000*1000)) >> return id
+wait id = liftIO (threadDelay (200 * 1000 * 1000)) >> return id
 
-data Command = CreateCommand | RemoveCommand | QuitCommand | UnknownCommand
+data Command
+  = CreateCommand
+  | RemoveCommand
+  | QuitCommand
+  | UnknownCommand
 
 parseInput :: String -> Command
 parseInput "create" = CreateCommand
@@ -121,7 +139,10 @@ parseInput "remove" = RemoveCommand
 parseInput "quit" = QuitCommand
 parseInput _ = UnknownCommand
 
-data Env = Env (Maybe DropletId) (Maybe SnapshotId) deriving Show
+data Env =
+  Env (Maybe DropletId)
+      (Maybe SnapshotId)
+  deriving (Show)
 
 emptyEnv = Env Nothing Nothing
 
@@ -133,40 +154,41 @@ updateEnvSnapshotIdId (Env a _) newId = Env a (Just newId)
 
 main :: IO ()
 main = runInputT defaultSettings $ loop emptyEnv
- where
-   loop :: Env -> InputT IO ()
-   loop env@(Env mayDropletId maySnapshotId) = do
-     outputStrLn "--------------"
-     outputStrLn $ "Env: " ++ show env
-     outputStrLn "--------------"
-     minput <- getInputLine "devManager> "
-     case minput of
-       Nothing -> outputStrLn "No input"
-       Just n -> case parseInput n of
-                   CreateCommand -> do
-                     outputStrLn "Creating a new droplet..."
-                     dropletId <- liftIO . runEitherT $ startDropletFromSnapshot
-                     case dropletId of
-                       (Right id) -> do
-                         outputStrLn . (++) "Success: ". show . coefficient . unDropletId $ id
-                         loop $ updateEnvDropletId env id
-
-                       (Left err) -> do
-                         outputStrLn . (++) "Error: " $ show err
-                         loop env
-                   RemoveCommand -> do
-                     outputStrLn "Removing droplet..."
-                     case mayDropletId of
-                       Nothing -> outputStrLn "No droplet id in env" >> loop env
-                       (Just id) -> do
-                         dropletId <- liftIO . runEitherT $ destroyDroplet id
-                         outputStrLn $ "Removed droplet with id " ++ show dropletId
-                         loop $ clearEnvDropletId env
-                     return ()
-
-                   QuitCommand -> do
-                     outputStrLn "Quitting..."
-                     return ()
-                   _ -> do
-                     outputStrLn "Unrecognized command."
-                     loop env
+  where
+    loop :: Env -> InputT IO ()
+    loop env@(Env mayDropletId maySnapshotId) = do
+      outputStrLn "--------------"
+      outputStrLn $ "Env: " ++ show env
+      outputStrLn "--------------"
+      minput <- getInputLine "devManager> "
+      case minput of
+        Nothing -> outputStrLn "No input"
+        Just n ->
+          case parseInput n of
+            CreateCommand -> do
+              outputStrLn "Creating a new droplet..."
+              dropletId <- liftIO . runEitherT $ startDropletFromSnapshot
+              case dropletId of
+                (Right id) -> do
+                  outputStrLn . (++) "Success: " . show . coefficient .
+                    unDropletId $
+                    id
+                  loop $ updateEnvDropletId env id
+                (Left err) -> do
+                  outputStrLn . (++) "Error: " $ show err
+                  loop env
+            RemoveCommand -> do
+              outputStrLn "Removing droplet..."
+              case mayDropletId of
+                Nothing -> outputStrLn "No droplet id in env" >> loop env
+                (Just id) -> do
+                  dropletId <- liftIO . runEitherT $ destroyDroplet id
+                  outputStrLn $ "Removed droplet with id " ++ show dropletId
+                  loop $ clearEnvDropletId env
+              return ()
+            QuitCommand -> do
+              outputStrLn "Quitting..."
+              return ()
+            _ -> do
+              outputStrLn "Unrecognized command."
+              loop env
