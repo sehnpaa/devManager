@@ -60,9 +60,7 @@ parseText :: Text -> Either Error Scientific
 parseText text =
   case (reads . T.unpack $ text :: [(Integer, String)]) of
     [(x, [])] -> Right (scientific x 0)
-    _ -> mapError ParseResponse err
-  where
-    err = Left $ T.concat ["Could not cast Text '", text, "' to Scientific"]
+    _ -> mapError TextToScientific $ Left text
 
 parseSnapshotId :: Response ByteString -> Either Error SnapshotId
 parseSnapshotId = fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody

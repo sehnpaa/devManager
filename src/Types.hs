@@ -1,6 +1,6 @@
 module Types where
 
-import Data.Scientific (Scientific, coefficient, scientific)
+import Data.Scientific (Scientific, coefficient)
 import Data.Text (Text, unpack)
 
 newtype Token = Token
@@ -14,6 +14,7 @@ data Error
   | ParseSnapshotId
   | ParseDropletId
   | DropletIdNotFound Text
+  | TextToScientific Text
 
 instance Show Error where
   show (TokenLength n) = "Token length is " ++ show n ++ "."
@@ -23,6 +24,8 @@ instance Show Error where
   show ParseSnapshotId = "Could not parse snapshot id."
   show ParseDropletId = "Could not parse droplet id."
   show (DropletIdNotFound n) = "Response status code: " ++ show n
+  show (TextToScientific s) =
+    "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
 
 newtype SnapshotId = SnapshotId
   { unSnapshotId :: Text
