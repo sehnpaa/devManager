@@ -101,9 +101,7 @@ destroyDropletIO token id = do
   response <- httpLbs (destroyDropletRequest token id) manager
   case statusCode (responseStatus response) of
     204 -> return $ Right id
-    n ->
-      return $ mapError (DropletIdNotFound) $ Left $
-      T.concat ["Response status code: ", T.pack . show $ n]
+    n -> return $ mapError DropletIdNotFound $ Left n
 
 getTokenIO :: IO (Either Error Token)
 getTokenIO = do
@@ -147,7 +145,6 @@ emptyEnv = Env Nothing Nothing
 updateEnvDropletId (Env _ a) newId = Env (Just newId) a
 
 clearEnvDropletId (Env _ a) = Env Nothing a
-
 updateEnvSnapshotIdId (Env a _) newId = Env a (Just newId)
 
 main :: IO ()
@@ -181,7 +178,9 @@ main = runInputT defaultSettings $ loop emptyEnv
                 Nothing -> outputStrLn "No droplet id in env" >> loop env
                 (Just id) -> do
                   dropletId <- liftIO . runEitherT $ destroyDroplet id
-                  outputStrLn $ "Removed droplet with id " ++ show dropletId
+                  case dropletId of
+                    (Right id) -> outputStrLn $ "Removed droplet with id " ++ show dropletId
+                    (Left err) -> outputStrLn . (++) "Error: " $ show err
                   loop $ clearEnvDropletId env
               return ()
             QuitCommand -> do

@@ -7,13 +7,15 @@ newtype Token = Token
   { getSecret :: String
   }
 
+type HTTPError = Int
+
 data Error
   = TokenLength Int
   | NoToken
   | ParseResponse Text
   | ParseSnapshotId
   | ParseDropletId
-  | DropletIdNotFound Text
+  | DropletIdNotFound HTTPError
   | TextToScientific Text
 
 instance Show Error where
@@ -23,7 +25,7 @@ instance Show Error where
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
   show ParseSnapshotId = "Could not parse snapshot id."
   show ParseDropletId = "Could not parse droplet id."
-  show (DropletIdNotFound n) = "Response status code: " ++ show n
+  show (DropletIdNotFound n) = "Droplet id not found. Response status code: " ++ show n
   show (TextToScientific s) =
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
 
