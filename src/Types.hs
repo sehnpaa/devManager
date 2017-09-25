@@ -12,6 +12,12 @@ data Env =
       (Maybe SnapshotId)
   deriving (Show)
 
+data Command
+  = CreateCommand
+  | RemoveCommand
+  | QuitCommand
+  | UnknownCommand
+
 data Success
   = DropletCreated DropletId
   | DropletRemoved DropletId

@@ -34,8 +34,9 @@ import Network
         startDropletRequest)
 import Token (getToken, tokenSanityCheck)
 import Types
-       (DropletId(DropletId), Env(..), Error(..), SnapshotId(SnapshotId),
-        Success(..), Token, getSecret, unDropletId, unSnapshotId)
+       (Command(..), DropletId(DropletId), Env(..), Error(..),
+        SnapshotId(SnapshotId), Success(..), Token, getSecret,
+        unDropletId, unSnapshotId)
 
 mapError :: (a -> c) -> Either a b -> Either c b
 mapError f (Left x) = Left $ f x
@@ -121,12 +122,6 @@ destroyDroplet id = do
 
 wait :: DropletId -> EitherT Error IO DropletId
 wait id = liftIO (threadDelay (200 * 1000 * 1000)) >> return id
-
-data Command
-  = CreateCommand
-  | RemoveCommand
-  | QuitCommand
-  | UnknownCommand
 
 parseInput :: String -> Command
 parseInput "create" = CreateCommand
