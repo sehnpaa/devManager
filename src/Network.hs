@@ -4,14 +4,17 @@ module Network where
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Either (EitherT(EitherT))
-import Data.Aeson (Value(String), (.=), eitherDecode', encode, object)
+import Data.Aeson
+       (Value(String), (.=), eitherDecode', encode, object)
 import Data.Aeson.Lens (AsValue, _Number, _String, key, nth)
 import qualified Data.ByteString.Char8 as S8 (append, concat, pack)
 import Data.ByteString.Lazy.Char8 as L8 (ByteString)
 import Data.Scientific (Scientific, coefficient)
 import Data.Text as T (Text, pack)
 import Lens.Micro ((^?))
-import Network.HTTP.Client (Request, RequestBody(RequestBodyLBS), Response, httpLbs, newManager, responseBody, responseStatus)
+import Network.HTTP.Client
+       (Request, RequestBody(RequestBodyLBS), Response, httpLbs,
+        newManager, responseBody, responseStatus)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Conduit
        (defaultRequest, host, method, path, requestBody, requestHeaders,
@@ -22,7 +25,9 @@ import Network.HTTP.Types.Status (statusCode)
 import System.Environment (getArgs)
 
 import Token (getToken, tokenSanityCheck)
-import Types (DropletId(DropletId), Error(..), SnapshotId(SnapshotId), Success(..), Token, getSecret, unDropletId, unSnapshotId)
+import Types
+       (DropletId(DropletId), Error(..), SnapshotId(SnapshotId),
+        Success(..), Token, getSecret, unDropletId, unSnapshotId)
 
 snapshotsRequest :: Token -> Request
 snapshotsRequest token =
@@ -96,10 +101,13 @@ snapshotRequest token =
 
 parseDropletId :: Response ByteString -> Either Error Success
 parseDropletId =
-  fmap (DropletCreated . DropletId) . maybeToEither ParseDropletId . getDropletId . responseBody
+  fmap (DropletCreated . DropletId) . maybeToEither ParseDropletId .
+  getDropletId .
+  responseBody
 
 parseSnapshotId :: Response ByteString -> Either Error SnapshotId
-parseSnapshotId = fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody
+parseSnapshotId =
+  fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody
 
 startSnapshotIO :: Token -> SnapshotId -> IO (Either Error Success)
 startSnapshotIO token id = do

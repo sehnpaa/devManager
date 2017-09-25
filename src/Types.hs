@@ -21,7 +21,7 @@ data Command
 data Success
   = DropletCreated DropletId
   | DropletRemoved DropletId
-  deriving Show
+  deriving (Show)
 
 type HTTPError = Int
 
@@ -43,7 +43,8 @@ instance Show Error where
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
   show ParseSnapshotId = "Could not parse snapshot id."
   show ParseDropletId = "Could not parse droplet id."
-  show (DropletIdNotFound n) = "Droplet id not found. Response status code: " ++ show n
+  show (DropletIdNotFound n) =
+    "Droplet id not found. Response status code: " ++ show n
   show (TextToScientific s) =
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
   show NotACommand = "That is not a recognized command."
