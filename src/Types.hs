@@ -7,6 +7,11 @@ newtype Token = Token
   { getSecret :: String
   }
 
+data Success
+  = DropletCreated DropletId
+  | DropletRemoved DropletId
+  deriving Show
+
 type HTTPError = Int
 
 data Error
@@ -17,6 +22,8 @@ data Error
   | ParseDropletId
   | DropletIdNotFound HTTPError
   | TextToScientific Text
+  | NotACommand
+  | MissingDropletIdInEnv
 
 instance Show Error where
   show (TokenLength n) = "Token length is " ++ show n ++ "."
@@ -28,6 +35,8 @@ instance Show Error where
   show (DropletIdNotFound n) = "Droplet id not found. Response status code: " ++ show n
   show (TextToScientific s) =
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
+  show NotACommand = "That is not a recognized command."
+  show MissingDropletIdInEnv = "Missing Droplet id in env"
 
 newtype SnapshotId = SnapshotId
   { unSnapshotId :: Text

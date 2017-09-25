@@ -34,8 +34,8 @@ import Network
         startDropletRequest)
 import Token (getToken, tokenSanityCheck)
 import Types
-       (DropletId(DropletId), Error(..), SnapshotId(SnapshotId), Token,
-        getSecret, unDropletId, unSnapshotId)
+       (DropletId(DropletId), Error(..), SnapshotId(SnapshotId), Success(..),
+        Token, getSecret, unDropletId, unSnapshotId)
 
 mapError :: (a -> c) -> Either a b -> Either c b
 mapError f (Left x) = Left $ f x
@@ -65,9 +65,9 @@ parseText text =
 parseSnapshotId :: Response ByteString -> Either Error SnapshotId
 parseSnapshotId = fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody
 
-parseDropletId :: Response ByteString -> Either Error DropletId
+parseDropletId :: Response ByteString -> Either Error Success
 parseDropletId =
-  fmap DropletId . maybeToEither ParseDropletId . getDropletId . responseBody
+  fmap (DropletCreated . DropletId) . maybeToEither ParseDropletId . getDropletId . responseBody
 
 requestObject :: SnapshotId -> Value
 requestObject id =
@@ -82,7 +82,7 @@ snapshotRequest :: Token -> SnapshotId -> Request
 snapshotRequest token =
   startDropletRequest token . RequestBodyLBS . encode . requestObject
 
-startSnapshotIO :: Token -> SnapshotId -> IO (Either Error DropletId)
+startSnapshotIO :: Token -> SnapshotId -> IO (Either Error Success)
 startSnapshotIO token id = do
   manager <- newManager tlsManagerSettings
   response <- httpLbs (snapshotRequest token id) manager
@@ -92,15 +92,14 @@ getSnapshotIO :: Token -> IO (Either Error SnapshotId)
 getSnapshotIO token = do
   manager <- newManager tlsManagerSettings
   response <- httpLbs (snapshotsRequest token) manager
-  -- return $ fmap SnapshotId (parseSnapshotId response >>= parseText)
   return . parseSnapshotId $ response
 
-destroyDropletIO :: Token -> DropletId -> IO (Either Error DropletId)
+destroyDropletIO :: Token -> DropletId -> IO (Either Error Success)
 destroyDropletIO token id = do
   manager <- newManager tlsManagerSettings
   response <- httpLbs (destroyDropletRequest token id) manager
   case statusCode (responseStatus response) of
-    204 -> return $ Right id
+    204 -> return $ Right $ DropletRemoved id
     n -> return $ mapError DropletIdNotFound $ Left n
 
 getTokenIO :: IO (Either Error Token)
@@ -108,14 +107,14 @@ getTokenIO = do
   args <- getArgs
   return $ mapError (const NoToken) $ (getToken args >>= tokenSanityCheck)
 
-startDropletFromSnapshot :: EitherT Error IO DropletId
+startDropletFromSnapshot :: EitherT Error IO Success
 startDropletFromSnapshot = do
   token <- EitherT getTokenIO
   liftIO $ putStrLn "Token received"
   snapshotId <- EitherT $ getSnapshotIO token
   EitherT $ startSnapshotIO token snapshotId
 
-destroyDroplet :: DropletId -> EitherT Error IO DropletId
+destroyDroplet :: DropletId -> EitherT Error IO Success
 destroyDroplet id = do
   token <- EitherT getTokenIO
   EitherT $ destroyDropletIO token id
@@ -145,47 +144,39 @@ emptyEnv = Env Nothing Nothing
 updateEnvDropletId (Env _ a) newId = Env (Just newId) a
 
 clearEnvDropletId (Env _ a) = Env Nothing a
+
 updateEnvSnapshotIdId (Env a _) newId = Env a (Just newId)
+
+run :: String -> Env -> IO (Either Error Success)
+run s (Env mayDropletId _) =
+  case parseInput s of
+    CreateCommand -> runEitherT startDropletFromSnapshot
+    RemoveCommand ->
+      case mayDropletId of
+        Nothing -> return $ Left MissingDropletIdInEnv
+        (Just n) -> runEitherT $ destroyDroplet n
+    UnknownCommand -> return $ Left NotACommand
+
+updateEnv :: Success -> Env -> Env
+updateEnv (DropletCreated id) env = updateEnvDropletId env id
+updateEnv (DropletRemoved _) env = clearEnvDropletId env
+
+newEnvBasedOn :: Either Error Success -> Env -> Env
+newEnvBasedOn (Right success) env = updateEnv success env
+newEnvBasedOn (Left _) env = env
 
 main :: IO ()
 main = runInputT defaultSettings $ loop emptyEnv
   where
     loop :: Env -> InputT IO ()
-    loop env@(Env mayDropletId maySnapshotId) = do
+    loop env = do
       outputStrLn "--------------"
       outputStrLn $ "Env: " ++ show env
       outputStrLn "--------------"
       minput <- getInputLine "devManager> "
       case minput of
         Nothing -> outputStrLn "No input"
-        Just n ->
-          case parseInput n of
-            CreateCommand -> do
-              outputStrLn "Creating a new droplet..."
-              dropletId <- liftIO . runEitherT $ startDropletFromSnapshot
-              case dropletId of
-                (Right id) -> do
-                  outputStrLn . (++) "Success: " . show . coefficient .
-                    unDropletId $
-                    id
-                  loop $ updateEnvDropletId env id
-                (Left err) -> do
-                  outputStrLn . (++) "Error: " $ show err
-                  loop env
-            RemoveCommand -> do
-              outputStrLn "Removing droplet..."
-              case mayDropletId of
-                Nothing -> outputStrLn "No droplet id in env" >> loop env
-                (Just id) -> do
-                  dropletId <- liftIO . runEitherT $ destroyDroplet id
-                  case dropletId of
-                    (Right id) -> outputStrLn $ "Removed droplet with id " ++ show dropletId
-                    (Left err) -> outputStrLn . (++) "Error: " $ show err
-                  loop $ clearEnvDropletId env
-              return ()
-            QuitCommand -> do
-              outputStrLn "Quitting..."
-              return ()
-            _ -> do
-              outputStrLn "Unrecognized command."
-              loop env
+        Just n -> do
+          res <- liftIO $ run n env
+          outputStrLn $ show res
+          loop $ newEnvBasedOn res env
