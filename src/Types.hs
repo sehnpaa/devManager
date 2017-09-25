@@ -21,6 +21,7 @@ data Command
 data Success
   = DropletCreated DropletId
   | DropletRemoved DropletId
+  | Quitting
   deriving (Show)
 
 type HTTPError = Int
