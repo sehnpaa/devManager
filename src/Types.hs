@@ -7,6 +7,11 @@ newtype Token = Token
   { getSecret :: String
   }
 
+data Env =
+  Env (Maybe DropletId)
+      (Maybe SnapshotId)
+  deriving (Show)
+
 data Success
   = DropletCreated DropletId
   | DropletRemoved DropletId

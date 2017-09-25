@@ -34,8 +34,8 @@ import Network
         startDropletRequest)
 import Token (getToken, tokenSanityCheck)
 import Types
-       (DropletId(DropletId), Error(..), SnapshotId(SnapshotId), Success(..),
-        Token, getSecret, unDropletId, unSnapshotId)
+       (DropletId(DropletId), Env(..), Error(..), SnapshotId(SnapshotId),
+        Success(..), Token, getSecret, unDropletId, unSnapshotId)
 
 mapError :: (a -> c) -> Either a b -> Either c b
 mapError f (Left x) = Left $ f x
@@ -134,17 +134,16 @@ parseInput "remove" = RemoveCommand
 parseInput "quit" = QuitCommand
 parseInput _ = UnknownCommand
 
-data Env =
-  Env (Maybe DropletId)
-      (Maybe SnapshotId)
-  deriving (Show)
-
+emptyEnv :: Env
 emptyEnv = Env Nothing Nothing
 
+updateEnvDropletId :: Env -> DropletId -> Env
 updateEnvDropletId (Env _ a) newId = Env (Just newId) a
 
+clearEnvDropletId :: Env -> Env
 clearEnvDropletId (Env _ a) = Env Nothing a
 
+updateEnvSnapshotIdId :: Env -> SnapshotId -> Env
 updateEnvSnapshotIdId (Env a _) newId = Env a (Just newId)
 
 run :: String -> Env -> IO (Either Error Success)
