@@ -1,15 +1,15 @@
 module Token where
 
-import Types (Token(Token), getSecret)
+import Types (Error(..), Token(Token), getSecret)
 
-tokenSanityCheck :: Token -> Either String Token
+tokenSanityCheck :: Token -> Either Error Token
 tokenSanityCheck token =
   case length (getSecret token) of
     64 -> Right token
-    n -> Left $ "Token length is " ++ show n ++ "."
+    n -> Left $ TokenLength n
 
-getToken :: [String] -> Either String Token
+getToken :: [String] -> Either Error Token
 getToken xss =
   case xss of
-    [] -> Left "You need to supply at least one argument."
+    [] -> Left NoToken
     (x:_) -> Right $ Token x

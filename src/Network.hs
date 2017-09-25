@@ -132,7 +132,7 @@ destroyDropletIO token id = do
 getTokenIO :: IO (Either Error Token)
 getTokenIO = do
   args <- getArgs
-  return $ mapError (const NoToken) $ (getToken args >>= tokenSanityCheck)
+  return $ getToken args >>= tokenSanityCheck
 
 startDropletFromSnapshot :: EitherT Error IO Success
 startDropletFromSnapshot = do
