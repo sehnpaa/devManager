@@ -13,8 +13,8 @@ import Data.Scientific (Scientific, coefficient)
 import Data.Text as T (Text, pack)
 import Lens.Micro ((^?))
 import Network.HTTP.Client
-       (Manager, ManagerSettings, Request, RequestBody(RequestBodyLBS), Response, httpLbs,
-        newManager, responseBody, responseStatus)
+       (Request, RequestBody(RequestBodyLBS), Response, responseBody,
+        responseStatus)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Conduit
        (defaultRequest, host, method, path, requestBody, requestHeaders,
@@ -22,8 +22,8 @@ import Network.HTTP.Conduit
 import Network.HTTP.Types.Header
        (Header, hAuthorization, hContentType)
 import Network.HTTP.Types.Status (statusCode)
-import System.Environment (getArgs)
 
+import Boundaries
 import Token (getToken, tokenSanityCheck)
 import Types
        (DropletId(DropletId), Error(..), SnapshotId(SnapshotId),
@@ -115,18 +115,6 @@ startSnapshotIO token id = do
   response <- mkHttp (snapshotRequest token id) manager
   return . parseDropletId $ response
 
-class Monad m => MonadT m where
-  newManager_ :: ManagerSettings -> m Manager
-
-instance MonadT IO where
-  newManager_ = newManager
-
-class Monad m => MonadT2 m where
-  mkHttp :: Request -> Manager -> m (Response ByteString)
-
-instance MonadT2 IO where
-  mkHttp = httpLbs
-
 getSnapshotIO :: (MonadT m, MonadT2 m) => Token -> m (Either Error SnapshotId)
 getSnapshotIO token = do
   manager <- newManager_ tlsManagerSettings
@@ -141,22 +129,10 @@ destroyDropletIO token id = do
     204 -> return $ Right $ DropletRemoved id
     n -> return $ mapError DropletIdNotFound $ Left n
 
-class Monad m => MonadArgs m where
-  getArguments :: m [String]
-
-instance MonadArgs IO where
-  getArguments = getArgs
-
 getTokenIO :: (MonadArgs m) => m (Either Error Token)
 getTokenIO = do
   args <- getArguments
   return $ getToken args >>= tokenSanityCheck
-
-class Monad m => MonadDisplay m where
-  output :: String -> m ()
-
-instance MonadDisplay IO where
-  output = putStrLn
 
 startDropletFromSnapshot :: (MonadIO m, MonadDisplay m, MonadArgs m, MonadT m, MonadT2 m) => EitherT Error m Success
 startDropletFromSnapshot = do
