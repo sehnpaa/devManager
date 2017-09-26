@@ -2,7 +2,7 @@
 
 module Network where
 
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Either (EitherT(EitherT))
 import Data.Aeson
        (Value(String), (.=), eitherDecode', encode, object)
@@ -13,7 +13,7 @@ import Data.Scientific (Scientific, coefficient)
 import Data.Text as T (Text, pack)
 import Lens.Micro ((^?))
 import Network.HTTP.Client
-       (Request, RequestBody(RequestBodyLBS), Response, httpLbs,
+       (Manager, ManagerSettings, Request, RequestBody(RequestBodyLBS), Response, httpLbs,
         newManager, responseBody, responseStatus)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Conduit
@@ -109,39 +109,63 @@ parseSnapshotId :: Response ByteString -> Either Error SnapshotId
 parseSnapshotId =
   fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody
 
-startSnapshotIO :: Token -> SnapshotId -> IO (Either Error Success)
+startSnapshotIO :: (MonadT m, MonadT2 m) => Token -> SnapshotId -> m (Either Error Success)
 startSnapshotIO token id = do
-  manager <- newManager tlsManagerSettings
-  response <- httpLbs (snapshotRequest token id) manager
+  manager <- newManager_ tlsManagerSettings
+  response <- mkHttp (snapshotRequest token id) manager
   return . parseDropletId $ response
 
-getSnapshotIO :: Token -> IO (Either Error SnapshotId)
+class Monad m => MonadT m where
+  newManager_ :: ManagerSettings -> m Manager
+
+instance MonadT IO where
+  newManager_ = newManager
+
+class Monad m => MonadT2 m where
+  mkHttp :: Request -> Manager -> m (Response ByteString)
+
+instance MonadT2 IO where
+  mkHttp = httpLbs
+
+getSnapshotIO :: (MonadT m, MonadT2 m) => Token -> m (Either Error SnapshotId)
 getSnapshotIO token = do
-  manager <- newManager tlsManagerSettings
-  response <- httpLbs (snapshotsRequest token) manager
+  manager <- newManager_ tlsManagerSettings
+  response <- mkHttp (snapshotsRequest token) manager
   return . parseSnapshotId $ response
 
-destroyDropletIO :: Token -> DropletId -> IO (Either Error Success)
+destroyDropletIO :: (MonadT m, MonadT2 m) => Token -> DropletId -> m (Either Error Success)
 destroyDropletIO token id = do
-  manager <- newManager tlsManagerSettings
-  response <- httpLbs (destroyDropletRequest token id) manager
+  manager <- newManager_ tlsManagerSettings
+  response <- mkHttp (destroyDropletRequest token id) manager
   case statusCode (responseStatus response) of
     204 -> return $ Right $ DropletRemoved id
     n -> return $ mapError DropletIdNotFound $ Left n
 
-getTokenIO :: IO (Either Error Token)
+class Monad m => MonadArgs m where
+  getArguments :: m [String]
+
+instance MonadArgs IO where
+  getArguments = getArgs
+
+getTokenIO :: (MonadArgs m) => m (Either Error Token)
 getTokenIO = do
-  args <- getArgs
+  args <- getArguments
   return $ getToken args >>= tokenSanityCheck
 
-startDropletFromSnapshot :: EitherT Error IO Success
+class Monad m => MonadDisplay m where
+  output :: String -> m ()
+
+instance MonadDisplay IO where
+  output = putStrLn
+
+startDropletFromSnapshot :: (MonadIO m, MonadDisplay m, MonadArgs m, MonadT m, MonadT2 m) => EitherT Error m Success
 startDropletFromSnapshot = do
   token <- EitherT getTokenIO
-  liftIO $ putStrLn "Token received"
+  liftIO $ output "Token received"
   snapshotId <- EitherT $ getSnapshotIO token
   EitherT $ startSnapshotIO token snapshotId
 
-destroyDroplet :: DropletId -> EitherT Error IO Success
+destroyDroplet :: (MonadArgs m, MonadT m, MonadT2 m) => DropletId -> EitherT Error m Success
 destroyDroplet id = do
   token <- EitherT getTokenIO
   EitherT $ destroyDropletIO token id
