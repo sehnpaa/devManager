@@ -22,6 +22,7 @@ import Network.HTTP.Conduit
 import Network.HTTP.Types.Header
        (Header, hAuthorization, hContentType)
 import Network.HTTP.Types.Status (statusCode)
+import Prelude hiding (id)
 
 import Boundaries
 import Token (getToken, tokenSanityCheck)

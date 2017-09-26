@@ -5,13 +5,14 @@ module Main where
 import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Either (EitherT, runEitherT)
+import Prelude hiding (id)
 import System.Console.Haskeline
        (InputT, defaultSettings, getInputLine, outputStrLn, runInputT)
 
 import Network (destroyDroplet, startDropletFromSnapshot)
 import Types
-       (Command(..), DropletId(DropletId), Env(..), Error(..), SnapshotId,
-        Success(..), unDropletId, unSnapshotId)
+       (Command(..), DropletId, Env(..), Error(..), SnapshotId,
+        Success(..))
 
 wait :: DropletId -> EitherT Error IO DropletId
 wait id = liftIO (threadDelay (200 * 1000 * 1000)) >> return id
