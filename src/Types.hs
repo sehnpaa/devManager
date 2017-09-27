@@ -21,7 +21,6 @@ data Command
 data Success
   = DropletCreated DropletId
   | DropletRemoved DropletId
-  | Quitting
   deriving (Show)
 
 type HTTPError = Int
@@ -36,6 +35,7 @@ data Error
   | TextToScientific Text
   | NotACommand
   | MissingDropletIdInEnv
+  | Quit
 
 instance Show Error where
   show (TokenLength n) = "Token length is " ++ show n ++ "."
@@ -50,6 +50,7 @@ instance Show Error where
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
   show NotACommand = "That is not a recognized command."
   show MissingDropletIdInEnv = "Missing Droplet id in env"
+  show Quit = "Quitting..."
 
 newtype SnapshotId = SnapshotId
   { unSnapshotId :: Text

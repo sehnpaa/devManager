@@ -42,7 +42,7 @@ run (Env mayDropletId _) RemoveCommand =
     Nothing -> return $ Left MissingDropletIdInEnv
     (Just n) -> runEitherT $ destroyDroplet n
 run _ UnknownCommand = return $ Left NotACommand
-run _ QuitCommand = return $ Right Quitting
+run _ QuitCommand = return $ Left Quit
 
 updateEnv :: Success -> Env -> Env
 updateEnv (DropletCreated id) env = updateEnvDropletId env id
@@ -66,7 +66,7 @@ main = runInputT defaultSettings $ loop emptyEnv
         Just n -> do
           res <- liftIO . run env . parseInput $ n
           case res of
-            (Right Quitting) -> return ()
+            (Left Quit) -> return ()
             _ -> do
               outputStrLn $ show res
               loop $ newEnvBasedOn res env
