@@ -35,16 +35,14 @@ clearEnvDropletId (Env _ a) = Env Nothing a
 updateEnvSnapshotIdId :: Env -> SnapshotId -> Env
 updateEnvSnapshotIdId (Env a _) newId = Env a (Just newId)
 
-run :: String -> Env -> IO (Either Error Success)
-run s (Env mayDropletId _) =
-  case parseInput s of
-    CreateCommand -> runEitherT startDropletFromSnapshot
-    RemoveCommand ->
-      case mayDropletId of
-        Nothing -> return $ Left MissingDropletIdInEnv
-        (Just n) -> runEitherT $ destroyDroplet n
-    UnknownCommand -> return $ Left NotACommand
-    QuitCommand -> return $ Right Quitting
+run :: Env -> Command -> IO (Either Error Success)
+run _ CreateCommand = runEitherT startDropletFromSnapshot
+run (Env mayDropletId _) RemoveCommand =
+  case mayDropletId of
+    Nothing -> return $ Left MissingDropletIdInEnv
+    (Just n) -> runEitherT $ destroyDroplet n
+run _ UnknownCommand = return $ Left NotACommand
+run _ QuitCommand = return $ Right Quitting
 
 updateEnv :: Success -> Env -> Env
 updateEnv (DropletCreated id) env = updateEnvDropletId env id
@@ -66,7 +64,7 @@ main = runInputT defaultSettings $ loop emptyEnv
       case minput of
         Nothing -> outputStrLn "No input"
         Just n -> do
-          res <- liftIO $ run n env
+          res <- liftIO . run env . parseInput $ n
           case res of
             (Right Quitting) -> return ()
             _ -> do
