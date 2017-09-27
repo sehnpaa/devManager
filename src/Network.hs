@@ -2,7 +2,6 @@
 
 module Network where
 
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Either (EitherT(EitherT))
 import Data.Aeson
        (Value(String), (.=), eitherDecode', encode, object)
@@ -134,10 +133,9 @@ getTokenIO = do
   args <- getArguments
   return $ getToken args >>= tokenSanityCheck
 
-startDropletFromSnapshot :: (MonadIO m, MonadDisplay m, MonadArgs m, MonadHttpRequest m) => EitherT Error m Success
+startDropletFromSnapshot :: (MonadDisplay m, MonadArgs m, MonadHttpRequest m) => EitherT Error m Success
 startDropletFromSnapshot = do
   token <- EitherT getTokenIO
-  liftIO $ output "Token received"
   snapshotId <- EitherT $ getSnapshotIO token
   EitherT $ startSnapshotIO token snapshotId
 
