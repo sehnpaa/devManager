@@ -33,6 +33,7 @@ instance MonadDisplay IO where
 instance MonadDisplay (State String) where
   output s = put s >> return ()
 
+
 class Monad m => MonadHttpRequest m where
   httpRequest :: Token -> (Token -> Request) -> m (Response ByteString)
 

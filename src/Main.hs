@@ -52,21 +52,21 @@ newEnvBasedOn :: Either Error Success -> Env -> Env
 newEnvBasedOn (Right success) env = updateEnv success env
 newEnvBasedOn (Left _) env = env
 
+loop :: Env -> InputT IO ()
+loop env = do
+  outputStrLn "--------------"
+  outputStrLn $ "Env: " ++ show env
+  outputStrLn "--------------"
+  minput <- getInputLine "devManager> "
+  case minput of
+    Nothing -> outputStrLn "No input"
+    Just n -> do
+      res <- liftIO . run env . parseInput $ n
+      case res of
+        (Left Quit) -> return ()
+        _ -> do
+          outputStrLn $ show res
+          loop $ newEnvBasedOn res env
+
 main :: IO ()
 main = runInputT defaultSettings $ loop emptyEnv
-  where
-    loop :: Env -> InputT IO ()
-    loop env = do
-      outputStrLn "--------------"
-      outputStrLn $ "Env: " ++ show env
-      outputStrLn "--------------"
-      minput <- getInputLine "devManager> "
-      case minput of
-        Nothing -> outputStrLn "No input"
-        Just n -> do
-          res <- liftIO . run env . parseInput $ n
-          case res of
-            (Left Quit) -> return ()
-            _ -> do
-              outputStrLn $ show res
-              loop $ newEnvBasedOn res env

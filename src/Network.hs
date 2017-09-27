@@ -100,9 +100,7 @@ snapshotRequest token =
 
 parseDropletId :: Response ByteString -> Either Error Success
 parseDropletId =
-  fmap (DropletCreated . DropletId) . maybeToEither ParseDropletId .
-  getDropletId .
-  responseBody
+  fmap (DropletCreated . DropletId) . maybeToEither ParseDropletId . getDropletId . responseBody
 
 parseSnapshotId :: Response ByteString -> Either Error SnapshotId
 parseSnapshotId =
@@ -114,15 +112,10 @@ startSnapshotIO token id =
 
 getSnapshotIO :: (MonadHttpRequest m) => Token -> m (Either Error SnapshotId)
 getSnapshotIO token = do
-  -- manager <- newManager_ tlsManagerSettings
-  -- response <- mkHttp (snapshotsRequest token) manager
-  response <- httpRequest token snapshotsRequest
-  return . parseSnapshotId $ response
+  httpRequest token snapshotsRequest >>= return . parseSnapshotId
 
 destroyDropletIO :: (MonadHttpRequest m) => Token -> DropletId -> m (Either Error Success)
 destroyDropletIO token id = do
-  -- manager <- newManager_ tlsManagerSettings
-  -- response <- mkHttp (destroyDropletRequest token id) manager
   response <- httpRequest token (flip destroyDropletRequest id)
   case statusCode (responseStatus response) of
     204 -> return $ Right $ DropletRemoved id

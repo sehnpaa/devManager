@@ -1,6 +1,12 @@
 module Token where
 
+import Boundaries
 import Types (Error(..), Token(Token), getSecret)
+
+getTokenIO :: (MonadArgs m) => m (Either Error Token)
+getTokenIO = do
+  args <- getArguments
+  return $ getToken args >>= tokenSanityCheck
 
 tokenSanityCheck :: Token -> Either Error Token
 tokenSanityCheck token =
