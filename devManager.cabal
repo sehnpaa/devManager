@@ -33,5 +33,6 @@ executable devManager
                      , http-types
                      , lens-aeson
                      , microlens
+                     , mtl
                      , scientific
                      , text

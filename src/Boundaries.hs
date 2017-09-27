@@ -1,15 +1,27 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Boundaries where
 
+import Control.Monad.State
+import Control.Monad.Reader
 import Data.ByteString.Lazy.Char8 as L8 (ByteString)
 import Network.HTTP.Client
-       (Manager, ManagerSettings, Request, Response, httpLbs, newManager)
+       (Request, Response, httpLbs, newManager)
+
+import Network.HTTP.Client.TLS (tlsManagerSettings)
 import System.Environment (getArgs)
+
+import Types
 
 class Monad m => MonadArgs m where
   getArguments :: m [String]
 
 instance MonadArgs IO where
   getArguments = getArgs
+
+instance MonadArgs (Reader [String]) where
+  getArguments = ask >>= return
 
 
 class Monad m => MonadDisplay m where
@@ -18,16 +30,14 @@ class Monad m => MonadDisplay m where
 instance MonadDisplay IO where
   output = putStrLn
 
+instance MonadDisplay (State String) where
+  output s = put s >> return ()
 
-class Monad m => MonadT m where
-  newManager_ :: ManagerSettings -> m Manager
+class Monad m => MonadHttpRequest m where
+  httpRequest :: Token -> (Token -> Request) -> m (Response ByteString)
 
-instance MonadT IO where
-  newManager_ = newManager
-
-
-class Monad m => MonadT2 m where
-  mkHttp :: Request -> Manager -> m (Response ByteString)
-
-instance MonadT2 IO where
-  mkHttp = httpLbs
+instance MonadHttpRequest IO where
+  httpRequest token g = do
+    manager <- newManager tlsManagerSettings
+    response <- httpLbs (g token) manager
+    return response

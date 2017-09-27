@@ -15,7 +15,6 @@ import Lens.Micro ((^?))
 import Network.HTTP.Client
        (Request, RequestBody(RequestBodyLBS), Response, responseBody,
         responseStatus)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Conduit
        (defaultRequest, host, method, path, requestBody, requestHeaders,
         secure)
@@ -110,22 +109,22 @@ parseSnapshotId :: Response ByteString -> Either Error SnapshotId
 parseSnapshotId =
   fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody
 
-startSnapshotIO :: (MonadT m, MonadT2 m) => Token -> SnapshotId -> m (Either Error Success)
-startSnapshotIO token id = do
-  manager <- newManager_ tlsManagerSettings
-  response <- mkHttp (snapshotRequest token id) manager
-  return . parseDropletId $ response
+startSnapshotIO :: (MonadHttpRequest m) => Token -> SnapshotId -> m (Either Error Success)
+startSnapshotIO token id =
+  httpRequest token (flip snapshotRequest id) >>= return . parseDropletId
 
-getSnapshotIO :: (MonadT m, MonadT2 m) => Token -> m (Either Error SnapshotId)
+getSnapshotIO :: (MonadHttpRequest m) => Token -> m (Either Error SnapshotId)
 getSnapshotIO token = do
-  manager <- newManager_ tlsManagerSettings
-  response <- mkHttp (snapshotsRequest token) manager
+  -- manager <- newManager_ tlsManagerSettings
+  -- response <- mkHttp (snapshotsRequest token) manager
+  response <- httpRequest token snapshotsRequest
   return . parseSnapshotId $ response
 
-destroyDropletIO :: (MonadT m, MonadT2 m) => Token -> DropletId -> m (Either Error Success)
+destroyDropletIO :: (MonadHttpRequest m) => Token -> DropletId -> m (Either Error Success)
 destroyDropletIO token id = do
-  manager <- newManager_ tlsManagerSettings
-  response <- mkHttp (destroyDropletRequest token id) manager
+  -- manager <- newManager_ tlsManagerSettings
+  -- response <- mkHttp (destroyDropletRequest token id) manager
+  response <- httpRequest token (flip destroyDropletRequest id)
   case statusCode (responseStatus response) of
     204 -> return $ Right $ DropletRemoved id
     n -> return $ mapError DropletIdNotFound $ Left n
@@ -135,14 +134,14 @@ getTokenIO = do
   args <- getArguments
   return $ getToken args >>= tokenSanityCheck
 
-startDropletFromSnapshot :: (MonadIO m, MonadDisplay m, MonadArgs m, MonadT m, MonadT2 m) => EitherT Error m Success
+startDropletFromSnapshot :: (MonadIO m, MonadDisplay m, MonadArgs m, MonadHttpRequest m) => EitherT Error m Success
 startDropletFromSnapshot = do
   token <- EitherT getTokenIO
   liftIO $ output "Token received"
   snapshotId <- EitherT $ getSnapshotIO token
   EitherT $ startSnapshotIO token snapshotId
 
-destroyDroplet :: (MonadArgs m, MonadT m, MonadT2 m) => DropletId -> EitherT Error m Success
+destroyDroplet :: (MonadArgs m, MonadHttpRequest m) => DropletId -> EitherT Error m Success
 destroyDroplet id = do
   token <- EitherT getTokenIO
   EitherT $ destroyDropletIO token id
