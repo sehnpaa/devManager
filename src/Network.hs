@@ -107,17 +107,18 @@ parseSnapshotId (CResponse _ body) =
 
 startSnapshotIO :: (MonadHttpRequest m) => Token -> SnapshotId -> m (Either Error Success)
 startSnapshotIO token id =
-  httpRequest token (flip snapshotRequest id) >>= return . parseDropletId
+  httpRequest (snapshotRequest token id) >>= return . parseDropletId
 
 getSnapshotIO :: (MonadHttpRequest m) => Token -> m (Either Error SnapshotId)
 getSnapshotIO token = do
-  httpRequest token snapshotsRequest >>= return . parseSnapshotId
+  httpRequest (snapshotsRequest token) >>= return . parseSnapshotId
 
 destroyDropletIO :: (MonadHttpRequest m) => Token -> DropletId -> m (Either Error Success)
 destroyDropletIO token id = do
-  (CResponse s _) <- httpRequest token (flip destroyDropletRequest id)
+  (CResponse s _) <- httpRequest (destroyDropletRequest token id)
   case statusCode s of
     204 -> return $ Right $ DropletRemoved id
+    -- n -> return $ mapError DropletIdNotFound $ Left n
     n -> return $ mapError DropletIdNotFound $ Left n
 
 startDropletFromSnapshot :: (MonadDisplay m, MonadArgs m, MonadHttpRequest m) => EitherT Error m Success

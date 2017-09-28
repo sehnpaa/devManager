@@ -5,11 +5,11 @@ module Boundaries where
 
 import Control.Monad.State
 import Control.Monad.Reader
-import Data.ByteString.Lazy.Char8 as L8 (ByteString, unpack)
+import Data.ByteString.Lazy.Char8 as L8 (ByteString, pack, unpack)
 import Network.HTTP.Client
        (Request, Response, responseBody, responseStatus, httpLbs, newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Network.HTTP.Types.Status (Status, statusCode)
+import Network.HTTP.Types.Status (Status, statusCode, status200, status204)
 import System.Environment (getArgs)
 
 import Types
@@ -33,15 +33,19 @@ instance MonadDisplay IO where
 instance MonadDisplay (State String) where
   output s = put s >> return ()
 
+
 class Monad m => MonadHttpRequest m where
-  -- httpRequest :: Token -> (Token -> Request) -> m (Response ByteString)
-  httpRequest :: Token -> (Token -> Request) -> m CResponse
+  httpRequest :: Request -> m CResponse
 
 instance MonadHttpRequest IO where
-  httpRequest token g = do
+  httpRequest req = do
     manager <- newManager tlsManagerSettings
-    response <- httpLbs (g token) manager
+    response <- httpLbs req manager
     return (CResponse (responseStatus response) (responseBody response))
 
 instance MonadHttpRequest (State String) where
-  httpRequest token g = undefined
+  httpRequest req = return $ CResponse status body
+    where
+      status = status204
+      -- body = L8.pack "{\"snapshots\": [{\"id\": \"123\"}]}"
+      body = L8.pack "{\"droplet\": {\"id\": 123}}"

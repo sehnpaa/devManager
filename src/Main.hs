@@ -46,8 +46,8 @@ run (Env mayDropletId _) RemoveCommand =
 run _ UnknownCommand = return $ Left NotACommand
 run _ QuitCommand = return $ Left Quit
 
-test :: State String (Either Error Success)
-test = runEitherT startDropletFromSnapshot
+test :: DropletId -> State String (Either Error Success)
+test a = runEitherT $ destroyDroplet a
 
 updateEnv :: Success -> Env -> Env
 updateEnv (DropletCreated id) env = updateEnvDropletId env id
