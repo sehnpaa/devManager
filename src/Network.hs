@@ -12,8 +12,7 @@ import Data.Scientific (Scientific, coefficient)
 import Data.Text as T (Text, pack)
 import Lens.Micro ((^?))
 import Network.HTTP.Client
-       (Request, RequestBody(RequestBodyLBS), Response, responseBody,
-        responseStatus)
+       (Request, RequestBody(RequestBodyLBS), Response, responseBody)
 import Network.HTTP.Conduit
        (defaultRequest, host, method, path, requestBody, requestHeaders,
         secure)
@@ -23,9 +22,9 @@ import Network.HTTP.Types.Status (statusCode)
 import Prelude hiding (id)
 
 import Boundaries
-import Token (getToken, tokenSanityCheck)
+import Token (getTokenIO)
 import Types
-       (DropletId(DropletId), Error(..), SnapshotId(SnapshotId),
+       (CResponse(CResponse), DropletId(DropletId), Error(..), SnapshotId(SnapshotId),
         Success(..), Token, getSecret, unDropletId, unSnapshotId)
 
 snapshotsRequest :: Token -> Request
@@ -98,13 +97,13 @@ snapshotRequest :: Token -> SnapshotId -> Request
 snapshotRequest token =
   startDropletRequest token . RequestBodyLBS . encode . requestObject
 
-parseDropletId :: Response ByteString -> Either Error Success
-parseDropletId =
-  fmap (DropletCreated . DropletId) . maybeToEither ParseDropletId . getDropletId . responseBody
+parseDropletId :: CResponse -> Either Error Success
+parseDropletId (CResponse _ body) =
+  fmap (DropletCreated . DropletId) . maybeToEither ParseDropletId . getDropletId $ body
 
-parseSnapshotId :: Response ByteString -> Either Error SnapshotId
-parseSnapshotId =
-  fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId . responseBody
+parseSnapshotId :: CResponse -> Either Error SnapshotId
+parseSnapshotId (CResponse _ body) =
+  fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId $ body
 
 startSnapshotIO :: (MonadHttpRequest m) => Token -> SnapshotId -> m (Either Error Success)
 startSnapshotIO token id =
@@ -116,15 +115,10 @@ getSnapshotIO token = do
 
 destroyDropletIO :: (MonadHttpRequest m) => Token -> DropletId -> m (Either Error Success)
 destroyDropletIO token id = do
-  response <- httpRequest token (flip destroyDropletRequest id)
-  case statusCode (responseStatus response) of
+  (CResponse s _) <- httpRequest token (flip destroyDropletRequest id)
+  case statusCode s of
     204 -> return $ Right $ DropletRemoved id
     n -> return $ mapError DropletIdNotFound $ Left n
-
-getTokenIO :: (MonadArgs m) => m (Either Error Token)
-getTokenIO = do
-  args <- getArguments
-  return $ getToken args >>= tokenSanityCheck
 
 startDropletFromSnapshot :: (MonadDisplay m, MonadArgs m, MonadHttpRequest m) => EitherT Error m Success
 startDropletFromSnapshot = do

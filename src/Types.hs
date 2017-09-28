@@ -1,7 +1,13 @@
 module Types where
 
+import Data.ByteString.Lazy.Char8 as L8 (ByteString)
 import Data.Scientific (Scientific, coefficient)
 import Data.Text (Text, unpack)
+import Network.HTTP.Types.Status (Status)
+
+type Body = String
+
+data CResponse = CResponse Status ByteString
 
 newtype Token = Token
   { getSecret :: String

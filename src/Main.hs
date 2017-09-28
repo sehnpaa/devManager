@@ -2,6 +2,7 @@
 
 module Main where
 
+import Control.Monad.State
 import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Either (EitherT, runEitherT)
@@ -44,6 +45,9 @@ run (Env mayDropletId _) RemoveCommand =
     (Just n) -> runEitherT $ destroyDroplet n
 run _ UnknownCommand = return $ Left NotACommand
 run _ QuitCommand = return $ Left Quit
+
+test :: State String (Either Error Success)
+test = runEitherT startDropletFromSnapshot
 
 updateEnv :: Success -> Env -> Env
 updateEnv (DropletCreated id) env = updateEnvDropletId env id
