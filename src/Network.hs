@@ -18,6 +18,7 @@ import Network.HTTP.Conduit
         secure)
 import Network.HTTP.Types.Header
        (Header, hAuthorization, hContentType)
+import Network.HTTP.Types.Method (methodDelete, methodPost)
 import Network.HTTP.Types.Status (statusCode)
 import Prelude hiding (id)
 
@@ -40,7 +41,7 @@ startDropletRequest :: Token -> RequestBody -> Request
 startDropletRequest token body =
   defaultRequest
   { host = "api.digitalocean.com"
-  , method = "POST"
+  , method = methodPost
   , path = "/v2/droplets"
   , requestBody = body
   , requestHeaders = authHeaders token
@@ -51,7 +52,7 @@ destroyDropletRequest :: Token -> DropletId -> Request
 destroyDropletRequest token dropletId =
   defaultRequest
   { host = "api.digitalocean.com"
-  , method = "DELETE"
+  , method = methodDelete
   , path =
       S8.concat
         ["/v2/droplets/", S8.pack . show . coefficient $ unDropletId dropletId]
