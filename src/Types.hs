@@ -35,7 +35,7 @@ data Error
   = TokenLength Int
   | NoToken
   | ParseResponse Text
-  | ParseSnapshotId
+  | ParseSnapshotId Text
   | ParseDropletId
   | DropletIdNotFound HTTPError
   | TextToScientific Text
@@ -48,12 +48,12 @@ instance Show Error where
   show NoToken = "You need to supply at least one argument."
   show (ParseResponse s) =
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
-  show ParseSnapshotId = "Could not parse snapshot id."
+  show (ParseSnapshotId s) = "Could not parse snapshot id from body: " ++ unpack s
   show ParseDropletId = "Could not parse droplet id."
   show (DropletIdNotFound n) =
     "Droplet id not found. Response status code: " ++ show n
   show (TextToScientific s) =
-    "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
+    "Could not parse Text '" ++ unpack s ++ "' to Scientific"
   show NotACommand = "That is not a recognized command."
   show MissingDropletIdInEnv = "Missing Droplet id in env"
   show Quit = "Quitting..."

@@ -7,7 +7,7 @@ import Data.Aeson
        (Value(String), (.=), eitherDecode', encode, object)
 import Data.Aeson.Lens (AsValue, _Number, _String, key, nth)
 import qualified Data.ByteString.Char8 as S8 (append, concat, pack)
-import Data.ByteString.Lazy.Char8 as L8 (ByteString)
+import Data.ByteString.Lazy.Char8 as L8 (ByteString, unpack)
 import Data.Scientific (Scientific, coefficient)
 import Data.Text as T (Text, pack)
 import Lens.Micro ((^?))
@@ -103,7 +103,7 @@ parseDropletId (CResponse _ body) =
 
 parseSnapshotId :: CResponse -> Either Error SnapshotId
 parseSnapshotId (CResponse _ body) =
-  fmap SnapshotId . maybeToEither ParseSnapshotId . getSnapshotId $ body
+  fmap SnapshotId . maybeToEither (ParseSnapshotId $ T.pack . L8.unpack $ body) . getSnapshotId $ body
 
 startSnapshotIO :: (MonadHttpRequest m) => Token -> SnapshotId -> m (Either Error Success)
 startSnapshotIO token id =
