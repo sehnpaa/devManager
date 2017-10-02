@@ -17,7 +17,7 @@ import Network.HTTP.Types.Method (methodDelete, methodPost)
 import Network.HTTP.Types.Status (statusCode)
 import Prelude hiding (id)
 
-import Boundaries
+import Boundaries (MonadArgs, MonadDisplay, MonadHttpRequest, httpRequest)
 import Parse (encodeRequestObject, getDropletId, getSnapshotId)
 import Token (getTokenIO)
 import Types
