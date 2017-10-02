@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Boundaries where
@@ -7,9 +8,10 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Data.ByteString.Lazy.Char8 as L8 (ByteString, pack, unpack)
 import Network.HTTP.Client
-       (Request, Response, responseBody, responseStatus, httpLbs, newManager)
+       (Request, Response, responseBody, responseStatus, httpLbs, method, newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Network.HTTP.Types.Status (Status, statusCode, status200, status204)
+import Network.HTTP.Types.Method (StdMethod(DELETE), methodDelete, methodPost, parseMethod)
+import Network.HTTP.Types.Status (Status, statusCode, status200, status204, status400)
 import System.Environment (getArgs)
 
 import Types
@@ -43,9 +45,14 @@ instance MonadHttpRequest IO where
     response <- httpLbs req manager
     return (CResponse (responseStatus response) (responseBody response))
 
+
 instance MonadHttpRequest (State String) where
   httpRequest req = return $ CResponse status body
     where
-      status = status204
+      -- status = status204
+      body = L8.pack "{\"snapshots\": [{\"id\": \"123\"}], \"droplet\": {\"id\": 3}}"
       -- body = L8.pack "{\"snapshots\": [{\"id\": \"123\"}]}"
-      body = L8.pack "{\"droplet\": {\"id\": 123}}"
+      -- body = L8.pack "{\"droplet\": {\"id\": 123}}"
+      status = case (parseMethod $ method req) of
+                 (Right DELETE) -> status200
+                 (Left _) -> status400

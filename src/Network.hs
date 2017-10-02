@@ -55,7 +55,7 @@ destroyDropletRequest token dropletId =
   , method = methodDelete
   , path =
       S8.concat
-        ["/v2/droplets/", S8.pack . show . coefficient $ unDropletId dropletId]
+        ["/v2/droplets/", S8.pack . show . coefficient . unDropletId $ dropletId]
   , requestHeaders = authHeaders token
   , secure = False
   }
@@ -119,7 +119,6 @@ destroyDropletIO token id = do
   (CResponse s _) <- httpRequest (destroyDropletRequest token id)
   case statusCode s of
     204 -> return $ Right $ DropletRemoved id
-    -- n -> return $ mapError DropletIdNotFound $ Left n
     n -> return $ mapError DropletIdNotFound $ Left n
 
 startDropletFromSnapshot :: (MonadDisplay m, MonadArgs m, MonadHttpRequest m) => EitherT Error m Success
