@@ -27,6 +27,3 @@ getDropletId :: AsValue s => s -> Maybe Scientific
 getDropletId x = x ^? key "droplet" . key "id" . _Number
 
 encodeRequestObject = encode . requestObject
-
-
-

@@ -7,7 +7,9 @@ import Network.HTTP.Types.Status (Status)
 
 type Body = String
 
-data CResponse = CResponse Status ByteString
+data CResponse =
+  CResponse Status
+            ByteString
 
 newtype Token = Token
   { getSecret :: String
@@ -48,7 +50,8 @@ instance Show Error where
   show NoToken = "You need to supply at least one argument."
   show (ParseResponse s) =
     "Could not parse Text '" ++ Data.Text.unpack s ++ "' to Scientific"
-  show (ParseSnapshotId s) = "Could not parse snapshot id from body: " ++ unpack s
+  show (ParseSnapshotId s) =
+    "Could not parse snapshot id from body: " ++ unpack s
   show ParseDropletId = "Could not parse droplet id."
   show (DropletIdNotFound n) =
     "Droplet id not found. Response status code: " ++ show n

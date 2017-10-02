@@ -2,13 +2,14 @@
 
 module Main where
 
-import Control.Monad.State
 import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.State
 import Control.Monad.Trans.Either (EitherT, runEitherT)
 import Prelude hiding (id)
 import System.Console.Haskeline
-       (InputT, MonadException, defaultSettings, getInputLine, outputStrLn, runInputT)
+       (InputT, MonadException, defaultSettings, getInputLine,
+        outputStrLn, runInputT)
 
 import Boundaries
 import Network (destroyDroplet, startDropletFromSnapshot)
@@ -37,7 +38,11 @@ clearEnvDropletId (Env _ a) = Env Nothing a
 updateEnvSnapshotIdId :: Env -> SnapshotId -> Env
 updateEnvSnapshotIdId (Env a _) newId = Env a (Just newId)
 
-run :: (MonadArgs m, MonadDisplay m, MonadHttpRequest m) => Env -> Command -> m (Either Error Success)
+run ::
+     (MonadArgs m, MonadDisplay m, MonadHttpRequest m)
+  => Env
+  -> Command
+  -> m (Either Error Success)
 run _ CreateCommand = runEitherT startDropletFromSnapshot
 run (Env mayDropletId _) RemoveCommand =
   case mayDropletId of
