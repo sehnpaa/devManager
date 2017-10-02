@@ -3,16 +3,12 @@
 module Network where
 
 import Control.Monad.Trans.Either (EitherT(EitherT))
-import Data.Aeson
-       (Value(String), (.=), eitherDecode', encode, object)
-import Data.Aeson.Lens (AsValue, _Number, _String, key, nth)
 import qualified Data.ByteString.Char8 as S8 (append, concat, pack)
-import Data.ByteString.Lazy.Char8 as L8 (ByteString, unpack)
-import Data.Scientific (Scientific, coefficient)
-import Data.Text as T (Text, pack)
-import Lens.Micro ((^?))
+import Data.ByteString.Lazy.Char8 as L8 (unpack)
+import Data.Scientific (coefficient)
+import Data.Text as T (pack)
 import Network.HTTP.Client
-       (Request, RequestBody(RequestBodyLBS), Response, responseBody)
+       (Request, RequestBody(RequestBodyLBS))
 import Network.HTTP.Conduit
        (defaultRequest, host, method, path, requestBody, requestHeaders,
         secure)
@@ -23,10 +19,11 @@ import Network.HTTP.Types.Status (statusCode)
 import Prelude hiding (id)
 
 import Boundaries
+import Parse (encodeRequestObject, getDropletId, getSnapshotId)
 import Token (getTokenIO)
 import Types
        (CResponse(CResponse), DropletId(DropletId), Error(..), SnapshotId(SnapshotId),
-        Success(..), Token, getSecret, unDropletId, unSnapshotId)
+        Success(..), Token, getSecret, unDropletId)
 
 snapshotsRequest :: Token -> Request
 snapshotsRequest token =
@@ -66,37 +63,19 @@ authHeaders token =
   , (hContentType, "application/json")
   ]
 
-requestObject :: SnapshotId -> Value
-requestObject id =
-  object
-    [ ("name" :: Text) .= ("haskellbox" :: Value)
-    , ("image" :: Text) .= (String $ unSnapshotId id :: Value)
-    , ("region" :: Text) .= ("ams3" :: Value)
-    , ("size" :: Text) .= ("c-2" :: Value)
-    ]
+toParseResponseError :: String -> Error
+toParseResponseError = ParseResponse . T.pack
 
 mapError :: (a -> c) -> Either a b -> Either c b
 mapError f (Left x) = Left $ f x
 mapError _ (Right x) = Right x
-
-decodeBody :: Response L8.ByteString -> Either Error Value
-decodeBody = mapError toParseResponseError . eitherDecode' . responseBody
-
-toParseResponseError :: String -> Error
-toParseResponseError = ParseResponse . T.pack
-
-getSnapshotId :: AsValue s => s -> Maybe T.Text
-getSnapshotId x = x ^? key "snapshots" . nth 0 . key "id" . _String
-
-getDropletId :: AsValue s => s -> Maybe Scientific
-getDropletId x = x ^? key "droplet" . key "id" . _Number
 
 maybeToEither :: e -> Maybe a -> Either e a
 maybeToEither e = maybe (Left e) Right
 
 snapshotRequest :: Token -> SnapshotId -> Request
 snapshotRequest token =
-  startDropletRequest token . RequestBodyLBS . encode . requestObject
+  startDropletRequest token . RequestBodyLBS . encodeRequestObject
 
 parseDropletId :: CResponse -> Either Error Success
 parseDropletId (CResponse _ body) =

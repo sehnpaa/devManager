@@ -45,7 +45,6 @@ instance MonadHttpRequest IO where
     response <- httpLbs req manager
     return (CResponse (responseStatus response) (responseBody response))
 
-
 instance MonadHttpRequest (State String) where
   httpRequest req = return $ CResponse status body
     where

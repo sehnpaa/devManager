@@ -19,6 +19,7 @@ executable devManager
   default-language:    Haskell2010
   other-modules:       Boundaries
                      , Network
+                     , Parse
                      , Token
                      , Types
   build-depends:       base >= 4.7 && < 5
