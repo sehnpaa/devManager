@@ -5,6 +5,11 @@ import Data.Scientific (Scientific, coefficient)
 import Data.Text (Text, unpack)
 import Network.HTTP.Types.Status (Status)
 
+data Op
+  = NewDroplet Token
+  | RemoveDroplet Token DropletId
+  | ListSnapshots Token
+
 type Body = String
 
 data CResponse =

@@ -22,7 +22,7 @@ import Parse (encodeRequestObject, getDropletId, getSnapshotId)
 import Token (getTokenIO)
 import Types
        (CResponse(CResponse), DropletId(DropletId), Error(..),
-        SnapshotId(SnapshotId), Success(..), Token, getSecret, unDropletId)
+        Op(..), SnapshotId(SnapshotId), Success(..), Token, getSecret, unDropletId)
 
 snapshotsRequest :: Token -> Request
 snapshotsRequest token =
@@ -93,16 +93,16 @@ parseSnapshotId (CResponse _ body) =
 startSnapshotIO ::
      (MonadHttpRequest m) => Token -> SnapshotId -> m (Either Error Success)
 startSnapshotIO token id =
-  httpRequest (snapshotRequest token id) >>= return . parseDropletId
+  httpRequest (snapshotRequest token id) (NewDroplet token) >>= return . parseDropletId
 
 getSnapshotIO :: (MonadHttpRequest m) => Token -> m (Either Error SnapshotId)
 getSnapshotIO token = do
-  httpRequest (snapshotsRequest token) >>= return . parseSnapshotId
+  httpRequest (snapshotsRequest token) (ListSnapshots token) >>= return . parseSnapshotId
 
 destroyDropletIO ::
      (MonadHttpRequest m) => Token -> DropletId -> m (Either Error Success)
 destroyDropletIO token id = do
-  (CResponse s _) <- httpRequest (destroyDropletRequest token id)
+  (CResponse s _) <- httpRequest (destroyDropletRequest token id) (RemoveDroplet token id)
   case statusCode s of
     204 -> return $ Right $ DropletRemoved id
     n -> return $ mapError DropletIdNotFound $ Left n

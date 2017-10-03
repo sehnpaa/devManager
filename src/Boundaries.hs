@@ -17,7 +17,7 @@ import Network.HTTP.Types.Status
        (Status, status200, status204, status400, statusCode)
 import System.Environment (getArgs)
 
-import Types
+import Types (CResponse(CResponse), Op)
 
 class Monad m =>
       MonadArgs m where
@@ -41,16 +41,16 @@ instance MonadDisplay (State String) where
 
 class Monad m =>
       MonadHttpRequest m where
-  httpRequest :: Request -> m CResponse
+   httpRequest :: Request -> Op -> m CResponse
 
 instance MonadHttpRequest IO where
-  httpRequest req = do
+  httpRequest req op = do
     manager <- newManager tlsManagerSettings
     response <- httpLbs req manager
     return (CResponse (responseStatus response) (responseBody response))
 
 instance MonadHttpRequest (State String) where
-  httpRequest req = return $ CResponse status body
+  httpRequest req op = return $ CResponse status body
       -- status = status204
     where
       body =
