@@ -3,11 +3,13 @@
 module Parse where
 
 import Data.Aeson
-       (Value(String), (.=), eitherDecode', encode, object)
+       (Value(String), (.=), encode, object)
 import Data.Aeson.Lens (AsValue, _Number, _String, key, nth)
-import Data.Scientific (Scientific, coefficient)
+import Data.ByteString.Lazy.Char8 as L8 (ByteString)
+import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Lens.Micro ((^?))
+import Prelude hiding (id)
 
 import Types
 
@@ -26,4 +28,5 @@ getSnapshotId x = x ^? key "snapshots" . nth 0 . key "id" . _String
 getDropletId :: AsValue s => s -> Maybe Scientific
 getDropletId x = x ^? key "droplet" . key "id" . _Number
 
+encodeRequestObject :: SnapshotId -> ByteString
 encodeRequestObject = encode . requestObject

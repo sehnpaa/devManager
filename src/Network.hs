@@ -3,17 +3,9 @@
 module Network where
 
 import Control.Monad.Trans.Either (EitherT(EitherT))
-import qualified Data.ByteString.Char8 as S8 (append, concat, pack)
 import Data.ByteString.Lazy.Char8 as L8 (unpack)
-import Data.Scientific (coefficient)
 import Data.Text as T (pack)
 import Network.HTTP.Client (Request, RequestBody(RequestBodyLBS))
-import Network.HTTP.Conduit
-       (defaultRequest, host, method, path, requestBody, requestHeaders,
-        secure)
-import Network.HTTP.Types.Header
-       (Header, hAuthorization, hContentType)
-import Network.HTTP.Types.Method (methodDelete, methodPost)
 import Network.HTTP.Types.Status (statusCode)
 import Prelude hiding (id)
 
@@ -23,7 +15,7 @@ import Request (snapshotsRequest, startDropletRequest, destroyDropletRequest)
 import Token (getTokenIO)
 import Types
        (CResponse(CResponse), DropletId(DropletId), Error(..),
-        Op(..), SnapshotId(SnapshotId), Success(..), Token, getSecret, unDropletId)
+        Op(..), SnapshotId(SnapshotId), Success(..), Token)
 
 toParseResponseError :: String -> Error
 toParseResponseError = ParseResponse . T.pack

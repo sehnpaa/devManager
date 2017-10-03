@@ -7,11 +7,9 @@ module Boundaries where
 import Control.Monad.State
 import Data.ByteString.Lazy.Char8 as L8 (pack)
 import Network.HTTP.Client
-       (Request, RequestBody(RequestBodyLBS), httpLbs, method, newManager, responseBody,
+       (Request(), RequestBody(RequestBodyLBS), httpLbs, method, newManager, responseBody,
         responseStatus)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Network.HTTP.Conduit
-       (defaultRequest, host, method, path, requestBody, requestHeaders)
 
 import Network.HTTP.Types.Method
        (StdMethod(DELETE), parseMethod)
@@ -21,9 +19,7 @@ import Prelude hiding (id)
 import System.Environment (getArgs)
 
 import Parse
-import Request
-import Types (CResponse(CResponse), Op(..), SnapshotId)
-import Request
+import Types (CResponse(CResponse), Op(..), MockEnv(..), SnapshotId, testToken)
 
 class Monad m =>
       MonadArgs m where
@@ -32,8 +28,9 @@ class Monad m =>
 instance MonadArgs IO where
   getArguments = getArgs
 
-instance MonadArgs (State String) where
-  getArguments = get >>= (\n -> return [n])
+instance MonadArgs (State MockEnv) where
+  getArguments = do
+    get >>= (\_ -> return [testToken])
 
 class Monad m =>
       MonadDisplay m where
@@ -42,8 +39,8 @@ class Monad m =>
 instance MonadDisplay IO where
   output = putStrLn
 
-instance MonadDisplay (State String) where
-  output s = put s >> return ()
+instance MonadDisplay (State MockEnv) where
+  output _ = undefined -- put s >> return ()
 
 class Monad m =>
       MonadHttpRequest m where
@@ -58,8 +55,8 @@ instance MonadHttpRequest IO where
 f :: SnapshotId -> RequestBody
 f = RequestBodyLBS . encodeRequestObject
 
-instance MonadHttpRequest (State String) where
-  httpRequest req (NewDroplet token) = return $ CResponse status body
+instance MonadHttpRequest (State MockEnv) where
+  httpRequest req (NewDroplet _) = return $ CResponse status body
     where
       body =
         L8.pack "{\"snapshots\": [{\"id\": \"123\"}], \"droplet\": {\"id\": 1}}"
@@ -70,9 +67,10 @@ instance MonadHttpRequest (State String) where
           (Right DELETE) -> status200
           (Left _) -> status400
           _ -> status500
-  httpRequest req (RemoveDroplet token id) = do
-    a <- get
+  httpRequest _ (RemoveDroplet _ _) = do
+    _ <- get
     return $ CResponse status body
       where
         body = L8.pack "{\"droplet\": {\"id\": 999}}"
         status = status204
+  httpRequest _ _ = undefined

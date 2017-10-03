@@ -14,7 +14,7 @@ import System.Console.Haskeline
 import Boundaries
 import Network (destroyDroplet, startDropletFromSnapshot)
 import Types
-       (Command(..), DropletId, Env(..), Error(..), SnapshotId,
+       (Command(..), DropletId, Env(..), Error(..), MockEnv(..), SnapshotId,
         Success(..))
 
 wait :: DropletId -> EitherT Error IO DropletId
@@ -51,10 +51,10 @@ run (Env mayDropletId _) RemoveCommand =
 run _ UnknownCommand = return $ Left NotACommand
 run _ QuitCommand = return $ Left Quit
 
-testDestroy :: DropletId -> State String (Either Error Success)
+testDestroy :: DropletId -> State MockEnv (Either Error Success)
 testDestroy a = runEitherT $ destroyDroplet a
 
-testCreate :: State String (Either Error Success)
+testCreate :: State MockEnv (Either Error Success)
 testCreate = runEitherT startDropletFromSnapshot
 
 updateEnv :: Success -> Env -> Env

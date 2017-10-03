@@ -5,6 +5,13 @@ import Data.Scientific (Scientific, coefficient)
 import Data.Text (Text, unpack)
 import Network.HTTP.Types.Status (Status)
 
+testToken :: String
+testToken = "ttttoooookkkkeeeeen"
+
+data MockEnv = MockEnv
+  { dropletIds :: [Int]
+  , snapshotIds :: [Int] }
+
 data Op
   = NewDroplet Token
   | RemoveDroplet Token DropletId
