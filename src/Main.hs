@@ -59,7 +59,7 @@ testCreate = runEitherT startDropletFromSnapshot
 
 updateEnv :: Success -> Env -> Env
 updateEnv (DropletCreated id) env = updateEnvDropletId env id
-updateEnv (DropletRemoved _) env = clearEnvDropletId env
+updateEnv DropletRemoved env = clearEnvDropletId env
 
 newEnvBasedOn :: Either Error Success -> Env -> Env
 newEnvBasedOn (Right success) env = updateEnv success env

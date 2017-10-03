@@ -19,50 +19,11 @@ import Prelude hiding (id)
 
 import Boundaries (MonadArgs, MonadDisplay, MonadHttpRequest, httpRequest)
 import Parse (encodeRequestObject, getDropletId, getSnapshotId)
+import Request (snapshotsRequest, startDropletRequest, destroyDropletRequest)
 import Token (getTokenIO)
 import Types
        (CResponse(CResponse), DropletId(DropletId), Error(..),
         Op(..), SnapshotId(SnapshotId), Success(..), Token, getSecret, unDropletId)
-
-snapshotsRequest :: Token -> Request
-snapshotsRequest token =
-  defaultRequest
-  { host = "api.digitalocean.com"
-  , path = "/v2/snapshots"
-  , requestHeaders = authHeaders token
-  , secure = False
-  }
-
-startDropletRequest :: Token -> RequestBody -> Request
-startDropletRequest token body =
-  defaultRequest
-  { host = "api.digitalocean.com"
-  , method = methodPost
-  , path = "/v2/droplets"
-  , requestBody = body
-  , requestHeaders = authHeaders token
-  , secure = False
-  }
-
-destroyDropletRequest :: Token -> DropletId -> Request
-destroyDropletRequest token dropletId =
-  defaultRequest
-  { host = "api.digitalocean.com"
-  , method = methodDelete
-  , path =
-      S8.concat
-        [ "/v2/droplets/"
-        , S8.pack . show . coefficient . unDropletId $ dropletId
-        ]
-  , requestHeaders = authHeaders token
-  , secure = False
-  }
-
-authHeaders :: Token -> [Header]
-authHeaders token =
-  [ (hAuthorization, S8.append "Bearer " (S8.pack . getSecret $ token))
-  , (hContentType, "application/json")
-  ]
 
 toParseResponseError :: String -> Error
 toParseResponseError = ParseResponse . T.pack
@@ -104,7 +65,7 @@ destroyDropletIO ::
 destroyDropletIO token id = do
   (CResponse s _) <- httpRequest (destroyDropletRequest token id) (RemoveDroplet token id)
   case statusCode s of
-    204 -> return $ Right $ DropletRemoved id
+    204 -> return $ Right $ DropletRemoved
     n -> return $ mapError DropletIdNotFound $ Left n
 
 startDropletFromSnapshot ::
